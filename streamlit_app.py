@@ -15,6 +15,7 @@ from supabase_backend import (
     init_supabase,
     list_analysis_results,
     mark_user_paid,
+    register_user,
     save_analysis_result,
     set_access_token,
     sign_out_user,
@@ -40,10 +41,12 @@ def inject_custom_css() -> None:
             --text-main: #17212b;
             --text-muted: #667085;
             --line: #d9e2ea;
-            --accent: #0f766e;
-            --accent-hover: #0b5f59;
-            --accent-soft: #dff4f1;
+            --accent: #ff6b16;
+            --accent-hover: #e55708;
+            --accent-soft: #fff0e8;
             --accent-strong: #042f2e;
+            --teal: #0f6177;
+            --teal-soft: #e8f3f6;
             --danger: #b42318;
             --warning-bg: #fff7ed;
             --warning-line: #fed7aa;
@@ -233,30 +236,20 @@ def inject_custom_css() -> None:
             gap: 2rem;
             align-items: stretch;
             padding: 2.2rem;
-            border: 1px solid rgba(15, 118, 110, 0.16);
+            border: 1px solid rgba(15, 97, 119, 0.18);
             border-radius: 8px;
             background:
-                linear-gradient(135deg, rgba(4, 47, 46, 0.96), rgba(15, 118, 110, 0.90)),
-                linear-gradient(180deg, #0f766e, #042f2e);
+                linear-gradient(135deg, rgba(8, 28, 37, 0.96), rgba(15, 97, 119, 0.88)),
+                linear-gradient(180deg, #0f6177, #17212b);
             color: #ffffff;
             margin-bottom: 1.4rem;
             overflow: hidden;
             position: relative;
         }
 
-        .product-hero:after {
-            content: "";
-            position: absolute;
-            inset: auto -6rem -8rem auto;
-            width: 22rem;
-            height: 22rem;
-            border: 1px solid rgba(255,255,255,0.16);
-            border-radius: 50%;
-        }
-
         .product-hero h1 {
             color: #ffffff !important;
-            font-size: clamp(2rem, 4vw, 3.5rem);
+            font-size: 3.35rem;
             margin: 0 0 0.9rem 0;
         }
 
@@ -319,6 +312,92 @@ def inject_custom_css() -> None:
             font-size: 0.9rem;
             border-top: 1px solid rgba(255,255,255,0.12);
             padding-top: 0.62rem;
+        }
+
+        .ppt-flow-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 1px;
+            overflow: hidden;
+            margin: 1rem 0 1.4rem;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--line);
+        }
+
+        .ppt-flow-step {
+            min-height: 126px;
+            padding: 1.1rem;
+            background: #ffffff;
+        }
+
+        .ppt-flow-step.active {
+            color: #ffffff;
+            background: var(--teal);
+        }
+
+        .ppt-flow-step span {
+            display: inline-grid;
+            width: 2rem;
+            height: 2rem;
+            place-items: center;
+            border: 1px solid #ffd2bb;
+            border-radius: 50%;
+            color: var(--accent);
+            font-size: 0.78rem;
+            font-weight: 850;
+        }
+
+        .ppt-flow-step strong,
+        .ppt-flow-step small {
+            display: block;
+        }
+
+        .ppt-flow-step strong {
+            margin-top: 0.8rem;
+        }
+
+        .ppt-flow-step small {
+            margin-top: 0.25rem;
+            color: var(--text-muted);
+        }
+
+        .ppt-flow-step.active small {
+            color: rgba(255,255,255,0.76);
+        }
+
+        .ppt-columns {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.85rem;
+            margin: 1rem 0 1.4rem;
+        }
+
+        .ppt-column {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 1rem;
+            background: #ffffff;
+        }
+
+        .ppt-column h3 {
+            margin: 0 0 0.8rem;
+            color: var(--teal);
+        }
+
+        .ppt-column ol {
+            margin: 0;
+            padding-left: 1.2rem;
+            color: var(--text-muted);
+            line-height: 1.7;
+        }
+
+        .ppt-notice {
+            border-radius: 8px;
+            padding: 1rem;
+            color: #ffffff;
+            background: var(--teal);
+            margin: 1rem 0;
         }
 
         .app-topbar {
@@ -455,6 +534,19 @@ def inject_custom_css() -> None:
             font-size: 0.85rem;
         }
 
+        .profile-line {
+            display: grid;
+            grid-template-columns: 9rem minmax(0, 1fr);
+            gap: 0.5rem;
+            padding: 0.62rem 0;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .profile-line span {
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
         @media (max-width: 760px) {
             .block-container {
                 padding-left: 1rem;
@@ -464,12 +556,18 @@ def inject_custom_css() -> None:
             .product-hero,
             .app-topbar,
             .hero-meta,
-            .result-grid {
+            .result-grid,
+            .ppt-flow-grid,
+            .ppt-columns {
                 grid-template-columns: 1fr;
             }
 
             .product-hero {
                 padding: 1.25rem;
+            }
+
+            .product-hero h1 {
+                font-size: 2.25rem;
             }
 
             .app-topbar {
@@ -512,14 +610,14 @@ def render_product_hero() -> None:
         """
         <div class="product-hero">
             <div>
-                <h1>상권 매출 예측 플랫폼</h1>
+                <h1>창업콕 상권매출 시스템</h1>
                 <p>
-                    업종별 원본 엑셀 계산식을 웹 계산 엔진으로 옮겨,
-                    후보지의 예상 매출과 손익을 단계별로 검토합니다.
+                    업종 선택, 현장조사 값 입력, 결제, 결과 조회, PDF 다운로드까지
+                    PPT 화면 흐름을 Streamlit 서비스 안에 반영했습니다.
                 </p>
                 <div class="hero-meta">
-                    <div class="hero-meta-item"><strong>3</strong><span>검증 완료 업종</span></div>
-                    <div class="hero-meta-item"><strong>Exact</strong><span>엑셀 수식 대조</span></div>
+                    <div class="hero-meta-item"><strong>3</strong><span>운영 가능 업종</span></div>
+                    <div class="hero-meta-item"><strong>42</strong><span>확장 예정 업종</span></div>
                     <div class="hero-meta-item"><strong>SaaS</strong><span>회원/결제/저장</span></div>
                 </div>
             </div>
@@ -528,13 +626,86 @@ def render_product_hero() -> None:
                 <div class="hero-list">
                     <div>업종 선택 후 기본 조사 정보를 입력합니다.</div>
                     <div>배후세대, 통행량, 경쟁점 조건을 단계별로 채웁니다.</div>
-                    <div>결제 또는 Admin 권한 확인 후 최종 결과를 확인합니다.</div>
+                    <div>마지막 단계에서 결제 후 결과를 확인하고 저장합니다.</div>
                 </div>
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+
+def render_ppt_flow_summary() -> None:
+    st.markdown(
+        """
+        <div class="ppt-flow-grid">
+            <div class="ppt-flow-step active"><span>01</span><strong>업종선택</strong><small>엑셀 시트 기준 업종 선택</small></div>
+            <div class="ppt-flow-step"><span>02</span><strong>현장조사 입력</strong><small>주소·조사일·조사값 입력</small></div>
+            <div class="ppt-flow-step"><span>03</span><strong>결제 및 보기</strong><small>개인 결제, 기업 별도 요금제</small></div>
+            <div class="ppt-flow-step"><span>04</span><strong>결과 다운로드</strong><small>저장 기록과 PDF 제공</small></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_ppt_role_flow() -> None:
+    st.markdown(
+        """
+        <div class="ppt-columns">
+            <div class="ppt-column">
+                <h3>개인 사용자</h3>
+                <ol>
+                    <li>회원가입 또는 로그인</li>
+                    <li>적합 업종 클릭</li>
+                    <li>현장조사 값 입력</li>
+                    <li>결제 후 결과 확인</li>
+                    <li>마이페이지에서 저장 기록 조회</li>
+                </ol>
+            </div>
+            <div class="ppt-column">
+                <h3>기업 사용자</h3>
+                <ol>
+                    <li>기업 회원 구분</li>
+                    <li>기업별 접근 권한 관리</li>
+                    <li>별도 요금제 적용</li>
+                    <li>결과물과 다운로드 이력 확인</li>
+                </ol>
+            </div>
+            <div class="ppt-column">
+                <h3>관리자</h3>
+                <ol>
+                    <li>회원관리</li>
+                    <li>결제내역 확인</li>
+                    <li>팝업관리</li>
+                    <li>SEO 설정</li>
+                    <li>다운로드 횟수 관리</li>
+                </ol>
+            </div>
+        </div>
+        <div class="ppt-notice">
+            향후 업종이 추가되면 업종 레지스트리와 계산 모듈을 연결해 같은 입력 마법사에서 확장합니다.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_service_home() -> None:
+    render_product_hero()
+    render_ppt_flow_summary()
+    render_ppt_role_flow()
+    ready_count = len([industry for industry in INDUSTRIES if industry.status == "ready"])
+    coming_count = len([industry for industry in INDUSTRIES if industry.status != "ready"])
+    render_result_tiles(
+        [
+            ("운영 가능 업종", f"{ready_count}", "현재 계산 엔진 연결"),
+            ("확장 예정 업종", f"{coming_count}", "업종별 엑셀 분석 후 활성화"),
+            ("회원 흐름", "개인 / 기업", "PPT 기준 분기 반영"),
+            ("관리 기능", "4개", "회원·결제·팝업·SEO"),
+        ]
+    )
+    st.info("엑셀 계산식 자체의 추가 검토는 다음 단계로 남겨두고, 현재는 기존 Streamlit 사이트에 PPT의 홈페이지 및 화면 흐름을 적용했습니다.")
 
 
 def render_app_header() -> None:
@@ -591,10 +762,11 @@ def render_empty_state(message: str) -> None:
 def render_auth_screen() -> None:
     st.markdown('<div class="auth-shell">', unsafe_allow_html=True)
     render_product_hero()
+    render_ppt_flow_summary()
 
     st.markdown('<div class="auth-card">', unsafe_allow_html=True)
     st.subheader("서비스 시작")
-    st.caption("지금은 회원가입 없이 게스트로 테스트할 수 있습니다. 저장 기능은 로그인 후 사용할 수 있습니다.")
+    st.caption("간단 정보 입력 후 가입할 수 있으며, 테스트는 게스트로 바로 시작할 수 있습니다.")
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("회원가입 없이 시작", type="primary", use_container_width=True):
@@ -618,17 +790,51 @@ def render_auth_screen() -> None:
             st.info("기존 계정이 있으면 아래 로그인으로 저장 기록을 이어서 볼 수 있습니다.")
 
     if database_engine is not None:
-        with st.form("login_form"):
-            user_id = st.text_input("이메일")
-            password = st.text_input("비밀번호", type="password")
-            submitted = st.form_submit_button("로그인", type="primary")
-        if submitted:
-            user = authenticate_user(database_engine, user_id=user_id, password=password)
-            if user is None:
-                st.error("아이디 또는 비밀번호가 올바르지 않습니다.")
-            else:
-                st.session_state["current_user"] = user
-                st.rerun()
+        login_tab, signup_tab = st.tabs(["로그인", "회원가입"])
+        with login_tab:
+            with st.form("login_form"):
+                user_id = st.text_input("이메일")
+                password = st.text_input("비밀번호", type="password")
+                submitted = st.form_submit_button("로그인", type="primary")
+            if submitted:
+                user = authenticate_user(database_engine, user_id=user_id, password=password)
+                if user is None:
+                    st.error("아이디 또는 비밀번호가 올바르지 않습니다.")
+                else:
+                    st.session_state["current_user"] = user
+                    st.rerun()
+        with signup_tab:
+            with st.form("signup_form"):
+                member_type = st.radio("회원 구분", ["개인", "기업"], horizontal=True)
+                signup_email = st.text_input("가입 이메일")
+                signup_password = st.text_input("비밀번호", type="password", help="영문, 숫자 조합 6~16자 이내 권장")
+                signup_name = st.text_input("이름")
+                company_name = st.text_input("회사명")
+                phone = st.text_input("휴대전화")
+                address = st.text_input("주소")
+                consent_email = st.checkbox("이메일 수신동의", value=True)
+                consent_sms = st.checkbox("SMS 수신동의", value=True)
+                signup_submitted = st.form_submit_button("가입하기", type="primary")
+            if signup_submitted:
+                try:
+                    user = register_user(
+                        database_engine,
+                        user_id=signup_email,
+                        password=signup_password,
+                        name=signup_name or company_name or signup_email,
+                        admin_user_ids=admin_user_ids,
+                    )
+                    user["member_type"] = member_type
+                    user["company_name"] = company_name
+                    user["phone"] = phone
+                    user["address"] = address
+                    user["email_consent"] = consent_email
+                    user["sms_consent"] = consent_sms
+                    st.session_state["current_user"] = user
+                    st.success("가입이 완료되었습니다.")
+                    st.rerun()
+                except Exception as exc:
+                    st.error(f"회원가입에 실패했습니다: {exc}")
     st.markdown("</div></div>", unsafe_allow_html=True)
 
 
@@ -971,8 +1177,14 @@ def default_traffic_rows() -> list[dict]:
 
 def render_account_sidebar() -> None:
     with st.sidebar:
-        st.markdown('<div class="sidebar-brand">UL-UMMA Sales</div>', unsafe_allow_html=True)
-        st.markdown('<div class="sidebar-muted">상권 매출 예측 SaaS</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sidebar-brand">창업콕 상권매출 시스템</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sidebar-muted">업종별 엑셀 변환 · 매출예측 SaaS</div>', unsafe_allow_html=True)
+        st.divider()
+        st.subheader("화면")
+        menu_options = ["서비스 홈", "입력 마법사", "마이페이지", "관리자"]
+        if "app_view" not in st.session_state:
+            st.session_state["app_view"] = "서비스 홈"
+        st.radio("화면 선택", menu_options, key="app_view", label_visibility="collapsed")
         st.divider()
         st.subheader("계정")
         st.write(f"**{current_user['name']}님**")
@@ -1058,6 +1270,12 @@ def render_step_1(industry_code: str | None) -> None:
         st.selectbox("지역 권역", regions, index=None, placeholder="선택 안 됨", key=f"{industry_code}_region")
     with col2:
         st.selectbox("행정 단위", admin_units, index=None, placeholder="선택 안 됨", key=f"{industry_code}_admin_unit")
+    st.text_input(
+        "간단 주소",
+        key=f"{industry_code}_simple_address",
+        placeholder="예: 서울시 강남구 역삼동",
+        help="PPT 기준 추가 항목입니다. 구, 동까지만 입력하며 추후 상권 매칭, 문자 발송, 리포트 표기 등에 활용할 수 있습니다.",
+    )
 
 
 def render_step_2(industry_code: str) -> None:
@@ -1262,7 +1480,112 @@ def render_history() -> None:
     st.dataframe(saved_rows, use_container_width=True, hide_index=True)
 
 
+def render_mypage() -> None:
+    render_section("My Page", "회원정보와 다운로드 이력", "PPT의 회원 상세/수정 화면을 Streamlit 마이페이지로 구성했습니다.")
+    profile_col, history_col = st.columns([0.85, 1.35])
+    with profile_col:
+        st.markdown("#### 회원정보")
+        st.markdown(
+            f"""
+            <div class="profile-line"><span>등록일</span><strong>현재 세션</strong></div>
+            <div class="profile-line"><span>상태</span><strong>{current_user.get('payment_status', 'unpaid')}</strong></div>
+            <div class="profile-line"><span>이메일</span><strong>{current_user.get('email') or 'guest@example.com'}</strong></div>
+            <div class="profile-line"><span>이름</span><strong>{current_user.get('name') or '-'}</strong></div>
+            <div class="profile-line"><span>회사명</span><strong>{current_user.get('company_name') or '-'}</strong></div>
+            <div class="profile-line"><span>회원유형</span><strong>{current_user.get('member_type') or current_user.get('role', 'User')}</strong></div>
+            """,
+            unsafe_allow_html=True,
+        )
+        with st.expander("회원정보 수정"):
+            st.text_input("이메일", value=current_user.get("email", ""), disabled=True)
+            st.text_input("비밀번호", type="password", help="비밀번호 변경시에만 입력합니다.")
+            st.text_input("이름", value=current_user.get("name", ""))
+            st.text_input("회사명", value=current_user.get("company_name", ""))
+            st.text_input("직급")
+            st.radio("성별", ["남성", "여성"], horizontal=True)
+            st.text_input("휴대전화", value=current_user.get("phone", ""))
+            st.text_input("유선전화")
+            st.text_input("주소", value=current_user.get("address", ""))
+            st.radio("이메일수신동의", ["동의", "수신거부"], horizontal=True)
+            st.radio("SMS 수신동의", ["동의", "수신거부"], horizontal=True)
+            st.button("수정 저장")
+    with history_col:
+        render_history()
+
+
+def render_admin_console() -> None:
+    render_section("Admin", "관리자 페이지", "PPT의 관리자 요구사항인 회원관리, 결제내역, 팝업관리, SEO 설정을 같은 화면에 배치했습니다.")
+    if not is_admin:
+        st.warning("현재 계정은 Admin 권한이 아닙니다. 아래 화면은 관리자 메뉴 구성 안내용입니다.")
+
+    tab_members, tab_payments, tab_popup, tab_seo = st.tabs(["회원관리", "결제내역", "팝업관리", "SEO 설정"])
+    with tab_members:
+        st.markdown("#### 개인회원 / 법인 회원")
+        if database_engine is not None and not current_user.get("is_guest"):
+            rows = list_analysis_results(
+                database_engine,
+                user_key=current_user["user_id"],
+                limit=200 if is_admin else 20,
+                include_all=is_admin,
+            )
+            if rows:
+                st.dataframe(rows, use_container_width=True, hide_index=True)
+            else:
+                st.info("저장된 분석 기록이 아직 없습니다.")
+        else:
+            st.dataframe(
+                [
+                    {"번호": 1, "ID": "TEST", "이름": "김OO", "연락처": "010-0000-0000", "상태": "승인", "등록일": "2024-01-01", "결제내역": "0건", "다운로드": "0/0"},
+                    {"번호": 2, "ID": "TEST2", "이름": "김OO", "연락처": "010-0000-0001", "상태": "비승인", "등록일": "2024-01-02", "결제내역": "0건", "다운로드": "0/0"},
+                    {"번호": 3, "ID": "TEST3", "이름": "김OO", "연락처": "010-0000-0002", "상태": "승인", "등록일": "2024-01-03", "결제내역": "3건", "다운로드": "0/3"},
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
+
+    with tab_payments:
+        st.markdown("#### 구매일 / 상품명 / 금액 / 상태")
+        st.dataframe(
+            [
+                {"구매일": "2024-01-17 12:18", "상품명": "상권매출 시스템 이용 및 다운로드권(1회)", "금액": "2,500,000", "상태": "결제완료"},
+                {"구매일": "2024-01-18 12:18", "상품명": "상권매출 시스템 이용 및 다운로드권(1회)", "금액": "2,500,000", "상태": "결제완료"},
+                {"구매일": "2024-01-19 12:18", "상품명": "상권매출 시스템 이용 및 다운로드권(1회)", "금액": "2,500,000", "상태": "결제완료"},
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+
+    with tab_popup:
+        st.text_input("팝업 제목", "서비스 안내 팝업")
+        st.selectbox("노출 여부", ["노출", "숨김"])
+        st.text_area("팝업 내용", "상권매출 시스템 이용 및 PDF 다운로드 안내")
+        st.button("팝업 저장")
+
+    with tab_seo:
+        st.text_input("SEO 타이틀", "창업콕 상권매출 시스템")
+        st.text_area("SEO 설명", "업종별 엑셀 계산 로직 기반 예상 매출액 산정 리포트 서비스입니다.")
+        st.text_input("대표 키워드", "상권분석, 예상매출, 엑셀변환, 창업컨설팅")
+        st.button("SEO 저장")
+
+
 render_account_sidebar()
+app_view = st.session_state.get("app_view", "서비스 홈")
+
+if app_view == "서비스 홈":
+    render_app_header()
+    render_service_home()
+    st.stop()
+
+if app_view == "마이페이지":
+    render_app_header()
+    render_mypage()
+    st.stop()
+
+if app_view == "관리자":
+    render_app_header()
+    render_admin_console()
+    st.stop()
+
 render_app_header()
 render_step_controls()
 
