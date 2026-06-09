@@ -34,7 +34,7 @@ READY_INDUSTRIES = [
         haejang_calc,
         haejang_calc.STATUS,
         haejang_calc.MVP_NOTE,
-        "excel_conversion_in_progress",
+        haejang_calc.ACCURACY_STATUS,
     ),
     IndustryInfo(
         pizza_calc.CODE,
@@ -42,7 +42,7 @@ READY_INDUSTRIES = [
         pizza_calc,
         pizza_calc.STATUS,
         pizza_calc.MVP_NOTE,
-        "calibrated_mvp",
+        pizza_calc.ACCURACY_STATUS,
     ),
     IndustryInfo(
         chicken_calc.CODE,
@@ -50,7 +50,7 @@ READY_INDUSTRIES = [
         chicken_calc,
         chicken_calc.STATUS,
         chicken_calc.MVP_NOTE,
-        "calibrated_mvp",
+        chicken_calc.ACCURACY_STATUS,
     ),
 ]
 

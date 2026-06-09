@@ -1,21 +1,18 @@
 from __future__ import annotations
 
-from copy import deepcopy
+from pure_model import Competitor, ModelInput
 
-from pure_model import Competitor, ModelInput, calculate as calculate_common
+from .pizza_exact import exact_calculate, with_pizza_default_extras
 
 
 CODE = "pizza"
 NAME = "피자"
 MVP_NOTE = (
-    "피자마루 엑셀 기본값에 맞춰 보정한 MVP 계산기입니다. "
-    "최종 MVP에서는 피자 전용 가중치 기준표를 별도 계산식으로 완전 분리합니다."
+    "피자마루 원본 엑셀의 업종 전용 시간대 구성비, 50대 이상 상권 유형, "
+    "채널별 잠재수요, 경쟁점 점수, 최종 후보점 배분식을 파이썬으로 이식한 exact 계산기입니다."
 )
 STATUS = "ready"
-
-MVP_MULTIPLIER = 0.669640964218573
-MONTH_INDEX = {month: 1.0 for month in range(1, 13)}
-WEEKDAY_INDEX = {day: 1.0 for day in ["월", "화", "수", "목", "금", "토", "일"]}
+ACCURACY_STATUS = "exact_excel_match_regression_verified"
 
 
 def empty_traffic() -> list[list[float]]:
@@ -25,9 +22,9 @@ def empty_traffic() -> list[list[float]]:
 def get_default_input() -> ModelInput:
     data = ModelInput(
         store_name="피자마루",
-        survey_month=6,
-        weekday="금",
-        region="충청권",
+        survey_month=7,
+        weekday="월",
+        region="서울 경기",
         admin_unit="시 단위",
         apartment_households=498,
         total_households=498,
@@ -55,45 +52,12 @@ def get_default_input() -> ModelInput:
         Competitor("미스터피자", 25, 158, 2, 2, 2, 2, 1, 7, 3, 0, 3),
     ]
     data.indirect_competitors = []
-    return data
+    return with_pizza_default_extras(data)
 
 
 def calculate(data: ModelInput) -> dict:
-    result = calculate_common(data)
-    month_index, weekday_index = get_indices(data)
-    date_correction = result["month_index"] * result["weekday_index"] / month_index / weekday_index
-    result = apply_sales_multiplier(result, MVP_MULTIPLIER * date_correction)
-    result["month_index"] = month_index
-    result["weekday_index"] = weekday_index
+    result = exact_calculate(data)
     result["industry_code"] = CODE
     result["industry_name"] = NAME
     result["mvp_note"] = MVP_NOTE
-    result["mvp_multiplier"] = MVP_MULTIPLIER
-    result["date_correction"] = date_correction
     return result
-
-
-def get_indices(data: ModelInput) -> tuple[float, float]:
-    month = max(1, min(12, int(data.survey_month)))
-    return MONTH_INDEX[month], WEEKDAY_INDEX.get(data.weekday, 1.0)
-
-
-def apply_sales_multiplier(result: dict, multiplier: float) -> dict:
-    scaled = deepcopy(result)
-    for key in [
-        "traffic_potential_total",
-        "household_potential_total",
-        "worker_potential_total",
-        "candidate_traffic_sales",
-        "candidate_household_sales",
-        "candidate_worker_sales",
-        "daily_sales_thousand",
-        "monthly_sales_thousand",
-        "monthly_sales_ex_vat_thousand",
-        "cogs_thousand",
-        "royalty_thousand",
-        "contribution_profit_thousand",
-    ]:
-        scaled[key] *= multiplier
-    return scaled
-

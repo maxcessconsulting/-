@@ -1,32 +1,22 @@
 from __future__ import annotations
 
-from copy import deepcopy
+from pure_model import Competitor, ModelInput
 
-from pure_model import Competitor, ModelInput, calculate as calculate_common
+try:
+    from industries.chicken_excel_map import assert_default_parity, base_input_cell_map
+    from industries.chicken_exact import exact_calculate, with_chicken_default_extras
+except ModuleNotFoundError:
+    from chicken_excel_map import assert_default_parity, base_input_cell_map
+    from chicken_exact import exact_calculate, with_chicken_default_extras
 
 
 CODE = "chicken"
 NAME = "치킨"
 MVP_NOTE = (
-    "푸라닭/치킨 업종 엑셀 기본값과 월/요일 변경값에 맞춰 보정한 MVP 계산기입니다. "
-    "최종 MVP에서는 치킨 전용 가중치 기준표를 별도 계산식으로 완전 분리합니다."
+    "푸라닭/치킨 업종 원본 엑셀의 take-out, 배달, 내점 고객 잠재수요와 판매 방식별 경쟁점 배분 수식을 이식한 계산기입니다."
 )
 STATUS = "ready"
-
-MVP_MULTIPLIER = 1.4944542984430171
-
-# The source chicken workbook uses a fixed month result cell that references B208
-# for every month selection. This intentionally mirrors that workbook behavior.
-MONTH_INDEX = {month: 1.0307808503678482 for month in range(1, 13)}
-WEEKDAY_INDEX = {
-    "월": 0.8274271143934917,
-    "화": 0.8536958896721132,
-    "수": 0.8601369002806009,
-    "목": 0.8598199097866892,
-    "금": 1.220752546139655,
-    "토": 1.2967667212562837,
-    "일": 1.081400918471166,
-}
+ACCURACY_STATUS = "exact_excel_match_regression_verified"
 
 
 def empty_traffic() -> list[list[float]]:
@@ -70,45 +60,18 @@ def get_default_input() -> ModelInput:
         Competitor("착한 맛집", 5, 177, 1, 2, 2, 1, 1, 2.5, 3, 0, 1),
     ]
     data.indirect_competitors = []
-    return data
+    return with_chicken_default_extras(data)
 
 
 def calculate(data: ModelInput) -> dict:
-    result = calculate_common(data)
-    month_index, weekday_index = get_indices(data)
-    date_correction = result["month_index"] * result["weekday_index"] / month_index / weekday_index
-    result = apply_sales_multiplier(result, MVP_MULTIPLIER * date_correction)
-    result["month_index"] = month_index
-    result["weekday_index"] = weekday_index
+    result = exact_calculate(data)
     result["industry_code"] = CODE
     result["industry_name"] = NAME
     result["mvp_note"] = MVP_NOTE
-    result["mvp_multiplier"] = MVP_MULTIPLIER
-    result["date_correction"] = date_correction
+    result["accuracy_status"] = ACCURACY_STATUS
+    result["excel_input_cells"] = base_input_cell_map()
     return result
 
 
-def get_indices(data: ModelInput) -> tuple[float, float]:
-    month = max(1, min(12, int(data.survey_month)))
-    return MONTH_INDEX[month], WEEKDAY_INDEX.get(data.weekday, 1.0)
-
-
-def apply_sales_multiplier(result: dict, multiplier: float) -> dict:
-    scaled = deepcopy(result)
-    for key in [
-        "traffic_potential_total",
-        "household_potential_total",
-        "worker_potential_total",
-        "candidate_traffic_sales",
-        "candidate_household_sales",
-        "candidate_worker_sales",
-        "daily_sales_thousand",
-        "monthly_sales_thousand",
-        "monthly_sales_ex_vat_thousand",
-        "cogs_thousand",
-        "royalty_thousand",
-        "contribution_profit_thousand",
-    ]:
-        scaled[key] *= multiplier
-    return scaled
-
+def validate_default_excel_parity() -> None:
+    assert_default_parity(calculate(get_default_input()))

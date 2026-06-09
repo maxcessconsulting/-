@@ -7,6 +7,7 @@ import json
 import streamlit as st
 import streamlit.components.v1 as components
 
+from commercial_exact import empty_editor_row, get_input_schema, rows_to_plain_records
 from supabase_backend import (
     authenticate_user,
     get_admin_user_ids,
@@ -33,15 +34,18 @@ def inject_custom_css() -> None:
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
         :root {
-            --app-bg: #f7f9fb;
+            --app-bg: #f5f7fa;
             --surface: #ffffff;
-            --surface-soft: #eef6f5;
+            --surface-soft: #f0f6f5;
+            --ink: #111827;
             --text-main: #17212b;
-            --text-muted: #637083;
-            --line: #dde6ee;
+            --text-muted: #667085;
+            --line: #d9e2ea;
             --accent: #0f766e;
             --accent-hover: #0b5f59;
             --accent-soft: #dff4f1;
+            --accent-strong: #042f2e;
+            --danger: #b42318;
             --warning-bg: #fff7ed;
             --warning-line: #fed7aa;
         }
@@ -52,14 +56,15 @@ def inject_custom_css() -> None:
 
         .stApp {
             background:
-                radial-gradient(circle at top left, rgba(15, 118, 110, 0.10), transparent 30rem),
+                linear-gradient(180deg, rgba(255,255,255,0.75), rgba(255,255,255,0)),
+                radial-gradient(circle at top left, rgba(15, 118, 110, 0.09), transparent 28rem),
                 var(--app-bg);
             color: var(--text-main);
         }
 
         .block-container {
-            max-width: 1180px;
-            padding-top: 2.2rem;
+            max-width: 1240px;
+            padding-top: 1.7rem;
             padding-bottom: 4rem;
         }
 
@@ -67,6 +72,7 @@ def inject_custom_css() -> None:
             font-weight: 800 !important;
             letter-spacing: 0 !important;
             color: var(--text-main);
+            line-height: 1.12 !important;
         }
 
         h2, h3 {
@@ -75,7 +81,7 @@ def inject_custom_css() -> None:
         }
 
         [data-testid="stSidebar"] {
-            background: #ffffff;
+            background: rgba(255,255,255,0.92);
             border-right: 1px solid var(--line);
         }
 
@@ -85,13 +91,13 @@ def inject_custom_css() -> None:
 
         .stButton > button,
         .stFormSubmitButton > button {
-            border-radius: 10px !important;
+            border-radius: 8px !important;
             border: 1px solid var(--accent) !important;
             background: var(--accent) !important;
             color: #ffffff !important;
             font-weight: 700 !important;
-            min-height: 2.8rem;
-            box-shadow: 0 8px 20px rgba(15, 118, 110, 0.18);
+            min-height: 2.75rem;
+            box-shadow: 0 8px 18px rgba(15, 118, 110, 0.16);
             transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
         }
 
@@ -114,7 +120,7 @@ def inject_custom_css() -> None:
         [data-testid="stTextInput"] input,
         [data-testid="stNumberInput"] input,
         [data-baseweb="select"] > div {
-            border-radius: 10px !important;
+            border-radius: 8px !important;
             border-color: var(--line) !important;
             background: #ffffff !important;
             min-height: 2.65rem;
@@ -128,7 +134,7 @@ def inject_custom_css() -> None:
 
         [data-testid="stDataFrame"],
         [data-testid="stDataEditor"] {
-            border-radius: 12px;
+            border-radius: 8px;
             overflow: hidden;
             border: 1px solid var(--line);
             background: #ffffff;
@@ -137,22 +143,20 @@ def inject_custom_css() -> None:
         [data-testid="stMetric"] {
             background: var(--surface);
             border: 1px solid var(--line);
-            border-radius: 12px;
+            border-radius: 8px;
             padding: 1rem;
-            box-shadow: 0 10px 26px rgba(23, 33, 43, 0.05);
         }
 
         .stAlert {
-            border-radius: 12px;
+            border-radius: 8px;
         }
 
         .wizard-card {
             background: rgba(255, 255, 255, 0.86);
             border: 1px solid var(--line);
-            border-radius: 14px;
+            border-radius: 8px;
             padding: 1rem 1.1rem;
             margin: 0.5rem 0 1.2rem;
-            box-shadow: 0 14px 34px rgba(23, 33, 43, 0.06);
         }
 
         .wizard-progress-head {
@@ -198,7 +202,7 @@ def inject_custom_css() -> None:
 
         .wizard-step {
             border: 1px solid var(--line);
-            border-radius: 999px;
+            border-radius: 8px;
             padding: 0.45rem 0.65rem;
             font-size: 0.83rem;
             color: var(--text-muted);
@@ -221,13 +225,261 @@ def inject_custom_css() -> None:
             background: var(--accent);
             color: #ffffff;
             font-weight: 800;
-            box-shadow: 0 10px 22px rgba(15, 118, 110, 0.18);
+            box-shadow: 0 8px 18px rgba(15, 118, 110, 0.18);
+        }
+
+        .product-hero {
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+            gap: 2rem;
+            align-items: stretch;
+            padding: 2.2rem;
+            border: 1px solid rgba(15, 118, 110, 0.16);
+            border-radius: 8px;
+            background:
+                linear-gradient(135deg, rgba(4, 47, 46, 0.96), rgba(15, 118, 110, 0.90)),
+                linear-gradient(180deg, #0f766e, #042f2e);
+            color: #ffffff;
+            margin-bottom: 1.4rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .product-hero:after {
+            content: "";
+            position: absolute;
+            inset: auto -6rem -8rem auto;
+            width: 22rem;
+            height: 22rem;
+            border: 1px solid rgba(255,255,255,0.16);
+            border-radius: 50%;
+        }
+
+        .product-hero h1 {
+            color: #ffffff !important;
+            font-size: clamp(2rem, 4vw, 3.5rem);
+            margin: 0 0 0.9rem 0;
+        }
+
+        .product-hero p {
+            color: rgba(255,255,255,0.78);
+            max-width: 42rem;
+            margin: 0;
+            font-size: 1.02rem;
+            line-height: 1.65;
+        }
+
+        .hero-meta {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        .hero-meta-item {
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 8px;
+            padding: 0.85rem;
+            background: rgba(255,255,255,0.08);
+        }
+
+        .hero-meta-item strong {
+            display: block;
+            font-size: 1.15rem;
+            color: #ffffff;
+        }
+
+        .hero-meta-item span {
+            color: rgba(255,255,255,0.70);
+            font-size: 0.82rem;
+        }
+
+        .hero-panel {
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 8px;
+            padding: 1.1rem;
+            background: rgba(255,255,255,0.09);
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-panel-title {
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 0.6rem;
+        }
+
+        .hero-list {
+            display: grid;
+            gap: 0.62rem;
+            margin-top: 0.8rem;
+        }
+
+        .hero-list div {
+            color: rgba(255,255,255,0.78);
+            font-size: 0.9rem;
+            border-top: 1px solid rgba(255,255,255,0.12);
+            padding-top: 0.62rem;
+        }
+
+        .app-topbar {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: flex-end;
+            margin-bottom: 1.2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .app-title {
+            margin: 0;
+            font-size: 1.75rem;
+            font-weight: 850;
+            color: var(--ink);
+        }
+
+        .app-subtitle {
+            margin-top: 0.35rem;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .status-pill-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 0.5rem;
+        }
+
+        .status-pill {
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 0.42rem 0.72rem;
+            background: #ffffff;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .status-pill.good {
+            border-color: rgba(15,118,110,0.24);
+            background: var(--accent-soft);
+            color: var(--accent);
+        }
+
+        .section-kicker {
+            color: var(--accent);
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-bottom: 0.3rem;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 850;
+            color: var(--ink);
+            margin-bottom: 0.25rem;
+        }
+
+        .section-copy {
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            line-height: 1.55;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.75rem;
+            margin: 0.6rem 0 1.2rem;
+        }
+
+        .result-tile {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #ffffff;
+            padding: 1rem;
+        }
+
+        .result-label {
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            font-weight: 700;
+            margin-bottom: 0.45rem;
+        }
+
+        .result-value {
+            color: var(--ink);
+            font-size: 1.3rem;
+            font-weight: 850;
+            line-height: 1.2;
+        }
+
+        .result-unit {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            margin-top: 0.28rem;
+        }
+
+        .empty-state {
+            border: 1px dashed #cbd5df;
+            border-radius: 8px;
+            padding: 1rem;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.7);
+        }
+
+        .auth-shell {
+            max-width: 1080px;
+            margin: 2rem auto 0;
+        }
+
+        .auth-card {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.86);
+            padding: 1rem;
+        }
+
+        .sidebar-brand {
+            font-weight: 850;
+            color: var(--ink);
+            font-size: 1.05rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .sidebar-muted {
+            color: var(--text-muted);
+            font-size: 0.85rem;
         }
 
         @media (max-width: 760px) {
             .block-container {
                 padding-left: 1rem;
                 padding-right: 1rem;
+            }
+
+            .product-hero,
+            .app-topbar,
+            .hero-meta,
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .product-hero {
+                padding: 1.25rem;
+            }
+
+            .app-topbar {
+                display: grid;
+                align-items: start;
+            }
+
+            .status-pill-row {
+                justify-content: flex-start;
             }
 
             .wizard-steps {
@@ -256,13 +508,95 @@ except Exception as exc:
     database_error = exc
 
 
+def render_product_hero() -> None:
+    st.markdown(
+        """
+        <div class="product-hero">
+            <div>
+                <h1>상권 매출 예측 플랫폼</h1>
+                <p>
+                    업종별 원본 엑셀 계산식을 웹 계산 엔진으로 옮겨,
+                    후보지의 예상 매출과 손익을 단계별로 검토합니다.
+                </p>
+                <div class="hero-meta">
+                    <div class="hero-meta-item"><strong>3</strong><span>검증 완료 업종</span></div>
+                    <div class="hero-meta-item"><strong>Exact</strong><span>엑셀 수식 대조</span></div>
+                    <div class="hero-meta-item"><strong>SaaS</strong><span>회원/결제/저장</span></div>
+                </div>
+            </div>
+            <div class="hero-panel">
+                <div class="hero-panel-title">분석 흐름</div>
+                <div class="hero-list">
+                    <div>업종 선택 후 기본 조사 정보를 입력합니다.</div>
+                    <div>배후세대, 통행량, 경쟁점 조건을 단계별로 채웁니다.</div>
+                    <div>결제 또는 Admin 권한 확인 후 최종 결과를 확인합니다.</div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_app_header() -> None:
+    db_status = "Supabase 연결" if database_engine is not None else "DB 연결 필요"
+    pay_status = current_user.get("payment_status", "unpaid")
+    role = current_user.get("role", "User")
+    st.markdown(
+        f"""
+        <div class="app-topbar">
+            <div>
+                <div class="app-title">상권 입지 평가</div>
+                <div class="app-subtitle">업종별 엑셀 로직 기반 매출 예측과 손익 분석</div>
+            </div>
+            <div class="status-pill-row">
+                <div class="status-pill good">{role}</div>
+                <div class="status-pill">{pay_status}</div>
+                <div class="status-pill">{db_status}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_section(kicker: str, title: str, copy: str = "") -> None:
+    st.markdown(
+        f"""
+        <div class="section-kicker">{kicker}</div>
+        <div class="section-title">{title}</div>
+        <div class="section-copy">{copy}</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_result_tiles(items: list[tuple[str, str, str]]) -> None:
+    tiles = "".join(
+        f"""
+        <div class="result-tile">
+            <div class="result-label">{label}</div>
+            <div class="result-value">{value}</div>
+            <div class="result-unit">{unit}</div>
+        </div>
+        """
+        for label, value, unit in items
+    )
+    st.markdown(f'<div class="result-grid">{tiles}</div>', unsafe_allow_html=True)
+
+
+def render_empty_state(message: str) -> None:
+    st.markdown(f'<div class="empty-state">{message}</div>', unsafe_allow_html=True)
+
+
 def render_auth_screen() -> None:
-    st.title("상권 입지 평가 매출예측 SaaS MVP")
-    st.caption("로그인 후 업종별 상권 분석과 저장 기록을 이용할 수 있습니다.")
+    st.markdown('<div class="auth-shell">', unsafe_allow_html=True)
+    render_product_hero()
     if database_engine is None:
         st.error(f"데이터베이스 연결 실패: {database_error}")
         st.stop()
 
+    st.markdown('<div class="auth-card">', unsafe_allow_html=True)
     login_tab, signup_tab = st.tabs(["로그인", "회원가입"])
 
     with login_tab:
@@ -303,6 +637,7 @@ def render_auth_screen() -> None:
                     st.session_state["current_user"] = user
                     st.success(f"{user['role']} 권한으로 가입되었습니다.")
                     st.rerun()
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
 
 def value_to_float(value) -> float:
@@ -349,8 +684,8 @@ def get_secret_value(name: str, default=None):
         return default
 
 
-def empty_competitor_row() -> dict:
-    return {
+def empty_competitor_row(extra_columns: list[str] | None = None) -> dict:
+    row = {
         "점명": None,
         "면적(평)": None,
         "거리": None,
@@ -364,6 +699,9 @@ def empty_competitor_row() -> dict:
         "주차": None,
         "가격": None,
     }
+    for column in extra_columns or []:
+        row[column] = None
+    return row
 
 
 def rows_to_competitors(rows) -> list[Competitor]:
@@ -590,6 +928,7 @@ def get_selected_industry():
 
 
 def build_base_input(industry_code: str) -> ModelInput:
+    schema = get_input_schema(industry_code)
     data = ModelInput()
     data.store_name = st.session_state.get(f"{industry_code}_store_name", "") or ""
     data.survey_month = int(st.session_state.get(f"{industry_code}_survey_month") or 0)
@@ -619,10 +958,18 @@ def build_base_input(industry_code: str) -> ModelInput:
         traffic_rows = traffic_rows.to_dict("records")
     data.traffic = [[value_to_float(row.get(col)) for col in AGE_COLUMNS] for row in traffic_rows]
 
-    direct_rows = st.session_state.get(f"{industry_code}_direct_competitors", [empty_competitor_row()])
-    indirect_rows = st.session_state.get(f"{industry_code}_indirect_competitors", [empty_competitor_row()])
+    direct_rows = st.session_state.get(f"{industry_code}_direct_competitors", [empty_competitor_row(schema.competitor_extra_columns)])
+    indirect_rows = st.session_state.get(f"{industry_code}_indirect_competitors", [empty_competitor_row(schema.competitor_extra_columns)])
     data.direct_competitors = rows_to_competitors(direct_rows)
     data.indirect_competitors = rows_to_competitors(indirect_rows)
+    data.extra_inputs = {
+        editor.key: rows_to_plain_records(
+            st.session_state.get(f"{industry_code}_{editor.key}", [empty_editor_row(editor.columns)])
+        )
+        for editor in schema.market_editors
+    }
+    data.extra_inputs["direct_competitor_rows"] = rows_to_plain_records(direct_rows)
+    data.extra_inputs["indirect_competitor_rows"] = rows_to_plain_records(indirect_rows)
     return data
 
 
@@ -632,15 +979,19 @@ def default_traffic_rows() -> list[dict]:
 
 def render_account_sidebar() -> None:
     with st.sidebar:
-        st.header("계정")
-        st.write(f"{current_user['name']}님")
+        st.markdown('<div class="sidebar-brand">UL-UMMA Sales</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sidebar-muted">상권 매출 예측 SaaS</div>', unsafe_allow_html=True)
+        st.divider()
+        st.subheader("계정")
+        st.write(f"**{current_user['name']}님**")
         st.caption(f"권한: {current_user['role']}")
         st.caption(f"결제 상태: {current_user.get('payment_status', 'unpaid')}")
         if st.button("로그아웃"):
             st.session_state.pop("current_user", None)
             st.rerun()
 
-        st.header("저장소 상태")
+        st.divider()
+        st.subheader("저장소")
         if database_engine is None:
             st.error("DB 연결 실패")
         else:
@@ -652,7 +1003,7 @@ def render_account_sidebar() -> None:
 
 
 def render_step_1(industry_code: str | None) -> None:
-    st.subheader("1단계: 업종 선택 및 기본 정보")
+    render_section("Step 01", "업종 선택 및 기본 정보", "분석할 업종과 후보점의 기본 조사 조건을 입력합니다.")
     industry_labels = [industry.label for industry in INDUSTRIES]
     st.selectbox(
         "업종 선택",
@@ -664,7 +1015,7 @@ def render_step_1(industry_code: str | None) -> None:
 
     selected_industry = get_selected_industry()
     if selected_industry is None:
-        st.info("업종을 먼저 선택하세요.")
+        render_empty_state("업종을 먼저 선택하면 해당 업종의 전용 계산 엔진과 입력 항목이 열립니다.")
         return
     if selected_industry.status != "ready":
         st.info(
@@ -673,8 +1024,18 @@ def render_step_1(industry_code: str | None) -> None:
         )
         return
 
-    st.info(selected_industry.note)
-    if selected_industry.accuracy_status != "exact_excel_match":
+    st.success(selected_industry.note)
+    schema = get_input_schema(selected_industry.code)
+    st.markdown(
+        f"""
+        <div class="status-pill-row" style="justify-content:flex-start;margin:0.4rem 0 1rem;">
+            <div class="status-pill good">정확도: {schema.exact_status}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.caption(schema.exact_note)
+    if not selected_industry.accuracy_status.startswith("exact_excel_match"):
         st.warning(
             "이 업종은 아직 원본 엑셀 전체 수식을 100% 완전 이식한 상태가 아닙니다. "
             "최종 상업용 MVP에서는 원본 엑셀과 입력 변경 테스트를 통과한 업종만 결과 공개 대상으로 전환해야 합니다."
@@ -704,7 +1065,8 @@ def render_step_1(industry_code: str | None) -> None:
 
 
 def render_step_2(industry_code: str) -> None:
-    st.subheader("2단계: 배후 세대 및 통행량 입력")
+    schema = get_input_schema(industry_code)
+    render_section("Step 02", "배후 세대 및 통행량", "세대수, 인구, 평형/가격 분포, 시간대별 통행량을 입력합니다.")
     col1, col2, col3 = st.columns(3)
     with col1:
         st.number_input("아파트 세대수", value=None, step=10.0, key=f"{industry_code}_apartment_households")
@@ -718,7 +1080,19 @@ def render_step_2(industry_code: str) -> None:
         st.number_input("직장인구", value=None, step=10.0, key=f"{industry_code}_worker_population")
         st.number_input("가구당 연간 소득(만원)", value=None, step=10.0, key=f"{industry_code}_annual_income")
 
-    st.subheader("통행량 조사")
+    for editor in schema.market_editors:
+        st.markdown(f"#### {editor.title}")
+        if editor.help_text:
+            st.caption(editor.help_text)
+        st.data_editor(
+            [empty_editor_row(editor.columns)],
+            use_container_width=True,
+            hide_index=True,
+            num_rows="fixed",
+            key=f"{industry_code}_{editor.key}",
+        )
+
+    st.markdown("#### 통행량 조사")
     st.data_editor(
         default_traffic_rows(),
         use_container_width=True,
@@ -729,19 +1103,22 @@ def render_step_2(industry_code: str) -> None:
 
 
 def render_step_3(industry_code: str) -> None:
-    st.subheader("3단계: 주변 경쟁점 정보")
+    schema = get_input_schema(industry_code)
+    render_section("Step 03", "주변 경쟁점 정보", "후보점과 직접/간접 경쟁점의 입지 조건을 입력합니다.")
     st.caption("직접 경쟁점의 첫 번째 행은 후보점 정보로 입력하세요.")
-    st.subheader("직접 경쟁점")
+    if schema.competitor_extra_columns:
+        st.caption(f"이 업종은 추가 경쟁점 입력항목을 사용합니다: {', '.join(schema.competitor_extra_columns)}")
+    st.markdown("#### 직접 경쟁점")
     st.data_editor(
-        [empty_competitor_row()],
+        [empty_competitor_row(schema.competitor_extra_columns)],
         use_container_width=True,
         hide_index=True,
         num_rows="dynamic",
         key=f"{industry_code}_direct_competitors",
     )
-    st.subheader("간접 경쟁점")
+    st.markdown("#### 간접 경쟁점")
     st.data_editor(
-        [empty_competitor_row()],
+        [empty_competitor_row(schema.competitor_extra_columns)],
         use_container_width=True,
         hide_index=True,
         num_rows="dynamic",
@@ -750,7 +1127,7 @@ def render_step_3(industry_code: str) -> None:
 
 
 def render_step_4(industry_code: str) -> None:
-    st.subheader("4단계: 투자금 및 비용 입력")
+    render_section("Step 04", "투자금 및 비용", "임차 조건, 영업일수, 원가율, 로열티 등 손익 계산에 필요한 값을 입력합니다.")
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.number_input("임차보증금(천원)", value=None, step=100.0, key=f"{industry_code}_deposit")
@@ -761,7 +1138,7 @@ def render_step_4(industry_code: str) -> None:
     with col4:
         st.number_input("관리비(천원)", value=None, step=10.0, key=f"{industry_code}_management_fee")
 
-    st.subheader("투자손익 입력")
+    st.markdown("#### 투자손익 입력")
     col1, col2, col3 = st.columns(3)
     with col1:
         st.number_input("로열티율", value=None, min_value=0.0, max_value=1.0, step=0.005, format="%.3f", key=f"{industry_code}_royalty_rate")
@@ -776,14 +1153,14 @@ def render_step_4(industry_code: str) -> None:
 
 
 def render_step_5(industry_code: str, selected_industry) -> None:
-    st.subheader("5단계: 결제 및 분석 결과")
+    render_section("Result", "결제 및 분석 결과", "입력값 검증 후 권한을 확인하고 최종 매출 예측 결과를 표시합니다.")
     process_portone_success(industry_code)
     data = build_base_input(industry_code)
     if st.button("분석 결과 보기", type="primary", key=f"{industry_code}_show_result"):
         st.session_state[f"{industry_code}_analysis_requested"] = True
 
     if not st.session_state.get(f"{industry_code}_analysis_requested", False):
-        st.info("입력값을 확인한 뒤 `분석 결과 보기` 버튼을 누르면 결과 확인 절차가 시작됩니다.")
+        render_empty_state("입력값을 확인한 뒤 분석 결과 보기 버튼을 누르면 결과 확인 절차가 시작됩니다.")
         return
 
     validation_errors = validate_input(data)
@@ -811,21 +1188,27 @@ def render_step_5(industry_code: str, selected_industry) -> None:
         st.error(f"계산 중 오류가 발생했습니다: {exc}")
         return
 
-    st.subheader("계산 결과")
-    metric_cols = st.columns(4)
-    metric_cols[0].metric("예상 일매출액", f"{result['daily_sales_thousand']:,.2f} 천원")
-    metric_cols[1].metric("월간 평균 매출액", f"{result['monthly_sales_thousand']:,.2f} 천원")
-    metric_cols[2].metric("상권 유형", result["trade_area_label"])
-    metric_cols[3].metric("1일 후보점 전면 통행량", f"{result['daily_traffic']:,.2f} 명")
+    render_section("Forecast", "계산 결과", "원본 엑셀 계산 엔진으로 산출한 후보점 매출 예측입니다.")
+    render_result_tiles(
+        [
+            ("예상 일매출액", f"{result['daily_sales_thousand']:,.2f}", "천원"),
+            ("월간 평균 매출액", f"{result['monthly_sales_thousand']:,.2f}", "천원"),
+            ("상권 유형", result["trade_area_label"], ""),
+            ("1일 후보점 전면 통행량", f"{result['daily_traffic']:,.2f}", "명"),
+        ]
+    )
 
-    st.subheader("손익 요약")
-    profit_cols = st.columns(4)
-    profit_cols[0].metric("월 매출, VAT 제외", f"{result['monthly_sales_ex_vat_thousand']:,.2f} 천원")
-    profit_cols[1].metric("매출원가", f"{result['cogs_thousand']:,.2f} 천원")
-    profit_cols[2].metric("로열티", f"{result['royalty_thousand']:,.2f} 천원")
-    profit_cols[3].metric("공헌이익", f"{result['contribution_profit_thousand']:,.2f} 천원")
+    render_section("Profit", "손익 요약", "월 매출에서 원가, 로열티, 임대료/관리비를 반영한 요약입니다.")
+    render_result_tiles(
+        [
+            ("월 매출, VAT 제외", f"{result['monthly_sales_ex_vat_thousand']:,.2f}", "천원"),
+            ("매출원가", f"{result['cogs_thousand']:,.2f}", "천원"),
+            ("로열티", f"{result['royalty_thousand']:,.2f}", "천원"),
+            ("공헌이익", f"{result['contribution_profit_thousand']:,.2f}", "천원"),
+        ]
+    )
 
-    st.subheader("계산 분해")
+    render_section("Breakdown", "계산 분해", "주요 가중치와 후보점 배분값을 확인합니다.")
     st.dataframe(
         [
             {"항목": "주고객 비율", "값": f"{result['main_customer_ratio'] * 100:,.2f}%"},
@@ -842,7 +1225,7 @@ def render_step_5(industry_code: str, selected_industry) -> None:
         hide_index=True,
     )
 
-    st.subheader("분석 결과 저장")
+    render_section("Save", "분석 결과 저장", "현재 입력값과 계산 결과를 계정 기록에 저장합니다.")
     if st.button("현재 분석 결과 저장", type="primary", key=f"{industry_code}_save_result"):
         saved_id = save_analysis_result(
             database_engine,
@@ -874,9 +1257,8 @@ def render_history() -> None:
     st.dataframe(saved_rows, use_container_width=True, hide_index=True)
 
 
-st.title("상권 입지 평가 매출예측 SaaS MVP")
-st.caption("단계별 입력 화면으로 업종별 엑셀 계산 로직을 실행합니다.")
 render_account_sidebar()
+render_app_header()
 render_step_controls()
 
 selected_industry = get_selected_industry()
