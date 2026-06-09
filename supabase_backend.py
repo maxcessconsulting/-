@@ -47,15 +47,24 @@ def register_user(
     if "@" not in email:
         raise ValueError("Supabase 로그인 아이디는 이메일 형식이어야 합니다.")
 
-    response = context.client.auth.sign_up(
-        {
-            "email": email,
-            "password": password,
-            "options": {"data": {"name": name.strip() or email}},
-        }
-    )
+    try:
+        response = context.client.auth.sign_up(
+            {
+                "email": email,
+                "password": password,
+                "options": {"data": {"name": name.strip() or email}},
+            }
+        )
+    except Exception as exc:
+        raise ValueError(_friendly_auth_error(exc)) from exc
+
     if response.user is None:
         raise ValueError("회원가입에 실패했습니다. Supabase 설정을 확인하세요.")
+    if response.session is None:
+        raise ValueError(
+            "회원가입 요청은 완료됐지만 이메일 인증이 필요합니다. "
+            "Supabase에서 발송한 인증 메일을 확인한 뒤 로그인하세요."
+        )
 
     role = "Admin" if email.lower() in (admin_user_ids or get_admin_user_ids()) else "User"
     payment_status = "paid" if role == "Admin" else "unpaid"
@@ -69,9 +78,8 @@ def register_user(
         "access_token": getattr(response.session, "access_token", None) if response.session else None,
         "refresh_token": getattr(response.session, "refresh_token", None) if response.session else None,
     }
-    if response.session:
-        set_auth_session(context, response.session)
-        upsert_profile(context, user)
+    set_auth_session(context, response.session)
+    upsert_profile(context, user)
     return user
 
 
@@ -220,6 +228,26 @@ def set_auth_session(context: SupabaseContext, session: Any) -> None:
 
 def normalize_email(value: str) -> str:
     return str(value or "").strip().lower()
+
+
+def _friendly_auth_error(exc: Exception) -> str:
+    raw_message = str(exc).lower()
+    if "already" in raw_message or "registered" in raw_message or "exists" in raw_message:
+        return "이미 가입된 이메일입니다. 로그인하거나 다른 이메일을 사용하세요."
+    if "password" in raw_message and ("weak" in raw_message or "short" in raw_message or "least" in raw_message):
+        return "비밀번호가 Supabase 보안 기준을 충족하지 않습니다. 더 긴 비밀번호를 사용하세요."
+    if "email" in raw_message and ("invalid" in raw_message or "not valid" in raw_message):
+        return "이메일 형식이 올바르지 않습니다."
+    if "signup" in raw_message and ("disabled" in raw_message or "not allowed" in raw_message):
+        return "Supabase Auth 설정에서 이메일 회원가입이 비활성화되어 있습니다."
+    if "rate" in raw_message or "too many" in raw_message:
+        return "회원가입 요청이 너무 많습니다. 잠시 후 다시 시도하세요."
+    if "confirm" in raw_message or "verification" in raw_message:
+        return "이메일 인증이 필요합니다. 인증 메일을 확인한 뒤 로그인하세요."
+    return (
+        "Supabase 회원가입 처리 중 오류가 발생했습니다. "
+        "SUPABASE_URL, SUPABASE_KEY, Auth 이메일 가입 설정을 확인하세요."
+    )
 
 
 def to_jsonable(value: Any) -> Any:

@@ -631,7 +631,7 @@ def render_auth_screen() -> None:
                         name=name,
                         admin_user_ids=admin_user_ids,
                     )
-                except ValueError as exc:
+                except Exception as exc:
                     st.error(str(exc))
                 else:
                     st.session_state["current_user"] = user
