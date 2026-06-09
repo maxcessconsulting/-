@@ -22,7 +22,8 @@
 
 ## 2단계 구조: Supabase 인증 및 데이터 저장
 
-회원가입/로그인과 분석 결과 저장은 Supabase를 사용합니다.
+현재 테스트 배포본은 회원가입 없이 `게스트로 시작`할 수 있습니다.
+기존 계정 로그인과 분석 결과 저장은 Supabase를 사용합니다.
 로컬 SQLite DB 대신 Supabase Auth와 Supabase Postgres 테이블에 연결됩니다.
 
 `.streamlit/secrets.toml` 파일을 만들고 아래 값을 넣으세요.
@@ -126,17 +127,18 @@ on public.payment_records for insert
 with check (auth.uid() = user_id);
 ```
 
-관리자 계정은 `ADMIN_EMAILS`에 들어 있는 이메일로 회원가입/로그인하면 `Admin` 역할로 저장됩니다.
+관리자 계정은 `ADMIN_EMAILS`에 들어 있는 이메일로 로그인하면 `Admin` 역할로 저장됩니다.
 
 주의: 현재 결제 성공 처리는 포트원 결제창 콜백 신호를 Streamlit이 감지해 `profiles.payment_status`를 `paid`로 바꾸는 MVP 로직입니다.
 상용 배포 전에는 포트원 REST API의 결제 단건조회/서버 검증 또는 웹훅 검증을 붙여서 결제금액과 주문번호를 반드시 서버에서 검증해야 합니다.
 
 이전 MySQL/SQLite 설정은 더 이상 사용하지 않습니다.
 
-## 3단계 구조: 회원가입, 로그인, Admin 권한
+## 3단계 구조: 게스트 시작, 로그인, Admin 권한
 
-사이트에 접속하면 분석 화면보다 로그인/회원가입 화면이 먼저 표시됩니다.
-회원 인증은 Supabase Auth가 처리하고, 서비스 권한/결제 상태는 `profiles` 테이블에 저장됩니다.
+사이트에 접속하면 `회원가입 없이 시작` 버튼과 로그인 화면이 먼저 표시됩니다.
+게스트 모드는 결과 확인용이며 분석 결과 저장은 제공하지 않습니다.
+기존 회원 인증은 Supabase Auth가 처리하고, 서비스 권한/결제 상태는 `profiles` 테이블에 저장됩니다.
 
 권한은 아래 두 가지입니다.
 
@@ -149,7 +151,7 @@ with check (auth.uid() = user_id);
 ADMIN_EMAILS = "admin@example.com,owner@example.com"
 ```
 
-`ADMIN_EMAILS`에 포함된 이메일로 회원가입하면 자동으로 `Admin` 권한이 부여됩니다.
+`ADMIN_EMAILS`에 포함된 이메일로 로그인하면 자동으로 `Admin` 권한이 부여됩니다.
 
 ## 4단계 구조: 결제 권한 로직
 

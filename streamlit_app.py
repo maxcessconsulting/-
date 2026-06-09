@@ -15,7 +15,6 @@ from supabase_backend import (
     init_supabase,
     list_analysis_results,
     mark_user_paid,
-    register_user,
     save_analysis_result,
     set_access_token,
     sign_out_user,
@@ -592,14 +591,33 @@ def render_empty_state(message: str) -> None:
 def render_auth_screen() -> None:
     st.markdown('<div class="auth-shell">', unsafe_allow_html=True)
     render_product_hero()
-    if database_engine is None:
-        st.error(f"데이터베이스 연결 실패: {database_error}")
-        st.stop()
 
     st.markdown('<div class="auth-card">', unsafe_allow_html=True)
-    login_tab, signup_tab = st.tabs(["로그인", "회원가입"])
+    st.subheader("서비스 시작")
+    st.caption("지금은 회원가입 없이 게스트로 테스트할 수 있습니다. 저장 기능은 로그인 후 사용할 수 있습니다.")
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("회원가입 없이 시작", type="primary", use_container_width=True):
+            guest_id = f"guest-{uuid.uuid4().hex[:10]}"
+            st.session_state["current_user"] = {
+                "id": guest_id,
+                "user_id": guest_id,
+                "email": "",
+                "name": "게스트",
+                "role": "User",
+                "payment_status": "paid",
+                "access_token": None,
+                "refresh_token": None,
+                "is_guest": True,
+            }
+            st.rerun()
+    with col2:
+        if database_engine is None:
+            st.warning("DB 연결 전에는 로그인 없이 시작만 사용할 수 있습니다.")
+        else:
+            st.info("기존 계정이 있으면 아래 로그인으로 저장 기록을 이어서 볼 수 있습니다.")
 
-    with login_tab:
+    if database_engine is not None:
         with st.form("login_form"):
             user_id = st.text_input("이메일")
             password = st.text_input("비밀번호", type="password")
@@ -611,32 +629,6 @@ def render_auth_screen() -> None:
             else:
                 st.session_state["current_user"] = user
                 st.rerun()
-
-    with signup_tab:
-        with st.form("signup_form"):
-            new_user_id = st.text_input("이메일")
-            name = st.text_input("이름")
-            new_password = st.text_input("새 비밀번호", type="password")
-            confirm_password = st.text_input("비밀번호 확인", type="password")
-            submitted = st.form_submit_button("회원가입")
-        if submitted:
-            if new_password != confirm_password:
-                st.error("비밀번호 확인이 일치하지 않습니다.")
-            else:
-                try:
-                    user = register_user(
-                        database_engine,
-                        user_id=new_user_id,
-                        password=new_password,
-                        name=name,
-                        admin_user_ids=admin_user_ids,
-                    )
-                except Exception as exc:
-                    st.error(str(exc))
-                else:
-                    st.session_state["current_user"] = user
-                    st.success(f"{user['role']} 권한으로 가입되었습니다.")
-                    st.rerun()
     st.markdown("</div></div>", unsafe_allow_html=True)
 
 
@@ -984,6 +976,8 @@ def render_account_sidebar() -> None:
         st.divider()
         st.subheader("계정")
         st.write(f"**{current_user['name']}님**")
+        if current_user.get("is_guest"):
+            st.caption("게스트 모드: 결과 확인 가능, 저장 기능 비활성")
         st.caption(f"권한: {current_user['role']}")
         st.caption(f"결제 상태: {current_user.get('payment_status', 'unpaid')}")
         if st.button("로그아웃"):
@@ -994,6 +988,8 @@ def render_account_sidebar() -> None:
         st.subheader("저장소")
         if database_engine is None:
             st.error("DB 연결 실패")
+        elif current_user.get("is_guest"):
+            st.info("게스트 모드")
         else:
             st.success("Supabase 연결")
         if is_admin:
@@ -1226,6 +1222,12 @@ def render_step_5(industry_code: str, selected_industry) -> None:
     )
 
     render_section("Save", "분석 결과 저장", "현재 입력값과 계산 결과를 계정 기록에 저장합니다.")
+    if current_user.get("is_guest"):
+        st.info("게스트 모드에서는 저장 기능을 사용하지 않습니다. 저장 기록이 필요하면 기존 계정으로 로그인하세요.")
+        return
+    if database_engine is None:
+        st.warning("DB 연결이 없어 저장할 수 없습니다.")
+        return
     if st.button("현재 분석 결과 저장", type="primary", key=f"{industry_code}_save_result"):
         saved_id = save_analysis_result(
             database_engine,
@@ -1240,6 +1242,9 @@ def render_step_5(industry_code: str, selected_industry) -> None:
 
 def render_history() -> None:
     st.subheader("저장 기록")
+    if current_user.get("is_guest"):
+        st.info("게스트 모드에서는 저장 기록을 제공하지 않습니다.")
+        return
     if database_engine is None:
         st.warning(f"데이터베이스에 연결하지 못해 저장 기록을 불러올 수 없습니다: {database_error}")
         return
