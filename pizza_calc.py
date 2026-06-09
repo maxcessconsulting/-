@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from pure_model import Competitor, ModelInput
 
-from .pizza_exact import exact_calculate, with_pizza_default_extras
+try:
+    from industries.pizza_exact import exact_calculate, with_pizza_default_extras
+except ModuleNotFoundError:
+    from pizza_exact import exact_calculate, with_pizza_default_extras
 
 
 CODE = "pizza"
